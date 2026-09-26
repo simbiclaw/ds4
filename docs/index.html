@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>M3 Ultra local inference: deployment guide for Claude Code</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --field:#113152; --field-deep:#0b2541; --panel:#15395e;
+  --line:#dbe8f5; --muted:#a3bfd9; --grid:rgba(219,232,245,.07); --grid-major:rgba(219,232,245,.13);
+  --amber:#f2b64e; --coral:#f08470; --sea:#8fd6ba; --sky:#8cc4f2;
+  --code-bg:#0a2139;
+  --sans:"IBM Plex Sans",-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+  --cond:"IBM Plex Sans Condensed","Arial Narrow",var(--sans);
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:1rem}
+body{
+  margin:0;color:var(--line);font-family:var(--sans);font-size:16px;line-height:1.6;
+  background-color:var(--field);
+  background-image:
+    linear-gradient(var(--grid-major) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid-major) 1px,transparent 1px),
+    linear-gradient(var(--grid) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:120px 120px,120px 120px,24px 24px,24px 24px;
+}
+.sheet{max-width:1180px;margin:0 auto;padding:2.5rem 1.5rem 5rem;display:grid;grid-template-columns:220px minmax(0,1fr);gap:2.5rem}
+@media (max-width:900px){.sheet{grid-template-columns:1fr}.toc{position:static!important;max-height:none!important}}
+.toc{position:sticky;top:1.5rem;align-self:start;max-height:calc(100vh - 3rem);overflow:auto;font-size:.88rem;border-left:1px solid var(--grid-major);padding-left:1rem}
+.toc a{display:block;color:var(--muted);text-decoration:none;padding:.18rem 0}
+.toc a:hover,.toc a:focus-visible{color:var(--line)}
+.toc b{display:block;font-family:var(--cond);font-weight:600;color:var(--line);margin:.2rem 0 .5rem;font-size:1rem}
+main{min-width:0}
+a{color:var(--sky)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+h1,h2,h3{font-family:var(--cond);font-weight:600;line-height:1.2;letter-spacing:.01em}
+h1{font-size:2.6rem;margin:0 0 .6rem;max-width:22ch}
+h2{font-size:1.75rem;margin:3.6rem 0 .8rem;padding-top:1rem;border-top:1px solid var(--grid-major);display:flex;gap:.8rem;align-items:baseline}
+h2 .no{font-family:var(--mono);font-size:.95rem;color:var(--amber);font-weight:500}
+h3{font-size:1.2rem;margin:2rem 0 .5rem;color:#fff}
+p,li{max-width:76ch}
+p{margin:.6rem 0}
+ul,ol{padding-left:1.25rem}
+li{margin:.25rem 0}
+strong{color:#fff;font-weight:600}
+code{font-family:var(--mono);font-size:.86em;background:rgba(10,33,57,.7);padding:.05em .3em;border-radius:3px;color:#e9f2fb}
+/* title block: the one memorable element */
+.titleblock{border:1.5px solid var(--line);display:grid;grid-template-columns:2.2fr 1fr 1fr;margin:1.6rem 0 1rem;background:rgba(11,37,65,.55)}
+.titleblock>div{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:.55rem .75rem;min-width:0}
+.titleblock>div:nth-child(3n){border-right:none}
+.titleblock>div:nth-last-child(-n+3){border-bottom:none}
+.titleblock span{display:block;font-size:.72rem;color:var(--muted);font-family:var(--cond);letter-spacing:.04em}
+.titleblock em{font-style:normal;font-family:var(--cond);font-size:1.02rem;color:#fff}
+@media (max-width:640px){.titleblock{grid-template-columns:1fr}.titleblock>div{border-right:none!important;border-bottom:1px solid var(--line)!important}}
+.lede{font-size:1.1rem;color:var(--muted);max-width:70ch}
+/* tags */
+.tag{display:inline-block;font-family:var(--cond);font-size:.78rem;padding:.02rem .45rem;border-radius:2px;border:1px solid;vertical-align:.1em;white-space:nowrap}
+.t-src{color:var(--sea);border-color:var(--sea)}
+.t-est{color:var(--sky);border-color:var(--sky)}
+.t-unv{color:var(--amber);border-color:var(--amber)}
+.t-bad{color:var(--coral);border-color:var(--coral)}
+/* tables */
+.tw{overflow-x:auto;margin:1rem 0;border:1px solid var(--grid-major)}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:560px}
+th,td{text-align:left;vertical-align:top;padding:.5rem .65rem;border-bottom:1px solid var(--grid-major)}
+th{font-family:var(--cond);font-weight:600;color:#fff;background:rgba(11,37,65,.8);font-size:.92rem}
+tr:last-child td{border-bottom:none}
+td code{white-space:nowrap}
+/* callouts */
+.note{border-left:3px solid var(--sky);background:rgba(11,37,65,.6);padding:.7rem 1rem;margin:1rem 0}
+.warn{border-left-color:var(--amber)}
+.stop{border-left-color:var(--coral)}
+.note p:first-child{margin-top:0}.note p:last-child{margin-bottom:0}
+/* code */
+pre{background:var(--code-bg);border:1px solid var(--grid-major);padding:1rem;overflow-x:auto;font-family:var(--mono);font-size:.84rem;line-height:1.55;margin:1rem 0;color:#e3eefa}
+pre code{background:none;padding:0;font-size:inherit}
+.hl-c{color:#7f9ab5;font-style:italic}.hl-f{color:var(--sky)}.hl-e{color:var(--amber)}.hl-s{color:var(--sea)}.hl-k{color:#c9a8f5}
+figure{margin:1.4rem 0}
+figure svg{width:100%;height:auto;display:block;background:rgba(11,37,65,.45);border:1px solid var(--grid-major)}
+figcaption{font-size:.85rem;color:var(--muted);margin-top:.45rem;max-width:80ch}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
+@media (max-width:760px){.cols{grid-template-columns:1fr}}
+.card{border:1px solid var(--grid-major);padding:.8rem 1rem;background:rgba(11,37,65,.45)}
+.card h3{margin-top:0}
+details{border:1px solid var(--grid-major);padding:.5rem .9rem;margin:.8rem 0;background:rgba(11,37,65,.4)}
+summary{cursor:pointer;font-family:var(--cond);font-weight:600;color:#fff}
+.small{font-size:.86rem;color:var(--muted)}
+@media print{body{background:#fff;color:#000}.toc{display:none}.sheet{display:block}pre,table,.card,.note{break-inside:avoid}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="sheet">
+<nav class="toc" aria-label="Contents">
+  <b>Contents</b>
+  <a href="#s0">0 How to use this guide</a>
+  <a href="#s1">1 Operating rules</a>
+  <a href="#s2">2 Decision framework</a>
+  <a href="#s3">3 Hardware model</a>
+  <a href="#s4">4 Engine capability matrix</a>
+  <a href="#s5">5 WP1 35B-A3B on MTPLX</a>
+  <a href="#s6">6 WP2 35B-A3B on mlx-dspark</a>
+  <a href="#s7">7 WP3 Qwen3.8-27B on mlx-serve</a>
+  <a href="#s7b">7b WP3b Both models on Splash</a>
+  <a href="#s8">8 WP4 DFlash2 4-bit anomaly</a>
+  <a href="#s9">9 WP5 Comparative bench</a>
+  <a href="#s10">10 WP6 Router integration</a>
+  <a href="#s11">11 Reference: large models</a>
+  <a href="#s12">12 Failure modes</a>
+  <a href="#s13">13 Corrections log</a>
+  <a href="#s14">14 Unresolved questions</a>
+  <a href="#s15">15 Sources</a>
+</nav>
+<main>
+<h1>Local inference deployment guide for the M3 Ultra stack</h1>
+<p class="lede">A build brief for Claude Code. It condenses one long working session into rules, three concrete deployments, a diagnosis task, a benchmark protocol, and every open question that must be answered before the router is changed.</p>
+
+<div class="titleblock" role="table" aria-label="Document metadata">
+  <div><span>Subject</span><em>Qwen3.6-35B-A3B and Qwen3.8-27B serving on Apple Silicon, four candidate engines</em></div>
+  <div><span>Revision</span><em>2026-09-25b (Splash, WP2 drafter)</em></div>
+  <div><span>Handoff</span><em>Claude Code</em></div>
+  <div><span>Primary host</span><em>Mac Studio M3 Ultra, 256 GB</em></div>
+  <div><span>Secondary host</span><em>Mac Pro M2 Ultra, 96 GB</em></div>
+  <div><span>Owner of decisions</span><em>Simbiclaw</em></div>
+</div>
+
+<p class="small">Evidence tags used throughout: <span class="tag t-src">Sourced</span> published by the project or a linked report; <span class="tag t-est">Estimate</span> back-of-envelope arithmetic from this session; <span class="tag t-unv">Unverified</span> plausible but not confirmed; <span class="tag t-bad">Known bug</span> reported failure. No number in this guide was measured on an M3 Ultra unless it says so.</p>
+
+<h2 id="s0"><span class="no">0</span>How to use this guide</h2>
+<p>Work packages WP1–WP6 (including WP3b) are the build. Each has a goal, preconditions, commands, a verification receipt that proves the feature actually ran, and exit criteria. Section 11 is reference material for larger models that are not part of this build. Section 14 lists questions that the owner must answer; the owner's standing rule is that design disagreements are resolved <strong>before</strong> build work starts, so stop and ask rather than guess when a work package depends on one of them.</p>
+<div class="note warn"><p><strong>Scope boundary.</strong> Do not change the production router until WP5 has produced a comparison and the owner has chosen. WP1–WP3b stand up candidate backends on new ports; they do not replace anything.</p></div>
+
+<h2 id="s1"><span class="no">1</span>Operating rules for Claude Code</h2>
+<ol>
+  <li><strong>Configured is not running.</strong> Every speculative or batching feature must be proven with the receipt listed in its work package (health payload widths, per-request acceptance, telemetry). A flag in a launch command proves nothing.</li>
+  <li><strong>Clean bench environment.</strong> Before any timing run: unload every other model server on the host, do one warm-up generation, interleave A/B runs with about 90 s cooldowns, record macOS version, engine version or commit, MLX version, checkpoint repo and revision.</li>
+  <li><strong>Correctness before speed.</strong> For each speculative configuration, compare greedy output against the same engine's non-speculative path. Differences beyond floating-point near-ties disqualify the configuration.</li>
+  <li><strong>Let engines calibrate on this Mac.</strong> Do not copy caps, depths or thresholds measured on M4 or M5 machines. Use <code>mtplx tune</code>, mlx-dspark's first-run calibration and <code>--max-draft auto</code>, and mlx-serve's learned round costs.</li>
+  <li><strong>Pin versions.</strong> All three engines move weekly. Record exact versions in a lockfile or README next to each launch script, and re-run the correctness check after any upgrade.</li>
+  <li><strong>Bind to localhost.</strong> mlx-serve binds <code>0.0.0.0</code> by default. Every backend in this guide must listen on <code>127.0.0.1</code> behind the router, or use an API key.</li>
+  <li><strong>Never enable</strong> <code>--wired-limit</code> in mlx-dspark, <code>--mode dflash</code> for the 35B-A3B, or a DFlash2 drafter in mlx-serve (reasons in the relevant sections).</li>
+  <li><strong>Report, do not smooth over.</strong> If a result contradicts this guide, record the measurement and flag it. Two of this guide's earlier claims were overturned by exactly that (section 13).</li>
+</ol>
+
+<h2 id="s2"><span class="no">2</span>Decision framework</h2>
+<p>Every deployment decision in this session reduced to five angles. They are ordered: each narrows the next. Later angles push back on earlier ones, so choose in order and then check backwards.</p>
+<figure>
+<svg viewBox="0 0 900 280" role="img" aria-labelledby="f1t f1d" font-family="IBM Plex Sans Condensed, Arial Narrow, sans-serif">
+<title id="f1t">Deployment decision chain</title>
+<desc id="f1d">Five boxes in order: Task, Hardware, Checkpoint, Engine, Evidence, joined by forward arrows. Above, an arc from Hardware to Engine notes that OS version and chip-specific kernels rule out engines. Below, an arc from Engine back to Checkpoint notes that engines reject unmatched MTP heads or need a sidecar, and an arc from Evidence back to Task notes that measurements can change routing.</desc>
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#dbe8f5"/></marker>
+<marker id="ahA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#f2b64e"/></marker></defs>
+<g fill="none" stroke="#dbe8f5" stroke-width="1.5">
+<rect x="20" y="110" width="140" height="60"/><rect x="200" y="110" width="140" height="60"/><rect x="380" y="110" width="140" height="60"/><rect x="560" y="110" width="140" height="60"/><rect x="740" y="110" width="140" height="60"/>
+<line x1="160" y1="140" x2="198" y2="140" marker-end="url(#ah)"/><line x1="340" y1="140" x2="378" y2="140" marker-end="url(#ah)"/><line x1="520" y1="140" x2="558" y2="140" marker-end="url(#ah)"/><line x1="700" y1="140" x2="738" y2="140" marker-end="url(#ah)"/>
+</g>
+<g fill="#ffffff" font-size="19" font-weight="600" text-anchor="middle"><text x="90" y="146">Task</text><text x="270" y="146">Hardware</text><text x="450" y="146">Checkpoint</text><text x="630" y="146">Engine</text><text x="810" y="146">Evidence</text></g>
+<g fill="#a3bfd9" font-size="12.5" text-anchor="middle">
+<text x="90" y="190">streams, latency,</text><text x="90" y="205">context, vision</text>
+<text x="270" y="190">fit, bandwidth,</text><text x="270" y="205">overhead, OS</text>
+<text x="450" y="190">quant, MTP head,</text><text x="450" y="205">drafter, format</text>
+<text x="630" y="190">spec, batching,</text><text x="630" y="205">cache, bugs</text>
+<text x="810" y="190">measured here,</text><text x="810" y="205">receipts</text></g>
+<g fill="none" stroke="#f2b64e" stroke-width="1.4" stroke-dasharray="5 4">
+<path d="M270,110 C300,40 600,40 626,108" marker-end="url(#ahA)"/>
+<path d="M630,170 C610,250 480,250 456,172" marker-end="url(#ahA)"/>
+<path d="M810,170 C790,272 120,272 94,172" marker-end="url(#ahA)"/></g>
+<g fill="#f2b64e" font-size="12.5" text-anchor="middle">
+<text x="448" y="52">macOS 26.2+ for mlx-serve; M5-only kernels</text>
+<text x="545" y="238">engine rejects unmatched MTP head / needs sidecar</text>
+<text x="330" y="262">measurement overturns routing</text></g>
+</svg>
+<figcaption>Forward arrows narrow the choice. Dashed arcs are the constraints that broke earlier conclusions in this session.</figcaption>
+</figure>
+<div class="tw"><table>
+<thead><tr><th>Angle</th><th>Questions to answer</th><th>Where it mattered in this session</th></tr></thead>
+<tbody>
+<tr><td>Task</td><td>One stream or many? Latency or throughput? Context length? Vision? Structured output? Thinking depth?</td><td>Single stream favours speculation; a Hermes swarm favours batching or batched MTP. MTPLX's batch lane rejects vision and <code>response_format</code>.</td></tr>
+<tr><td>Hardware</td><td>Does it fit under the GPU memory cap? Is decode bandwidth-bound or overhead-bound? Is prefill compute-bound? Co-tenants? OS version?</td><td>Dense 27B is bandwidth-bound; 35B-A3B is overhead-bound. mlx-serve needs macOS 26.2+.</td></tr>
+<tr><td>Checkpoint</td><td>Quant level? MTP head present and trained against this exact trunk? Drafter pairing? Vision tower? Format?</td><td>mlx-serve speculates only with an MTP sidecar. MTPLX refuses sidecars not built for the trunk. ds4 needs its own GGUFs.</td></tr>
+<tr><td>Engine</td><td>Which speculation method? Batching? Both at once on hybrid models? Prefix cache for hybrids? APIs? Known bugs?</td><td>Only MTPLX (35B-A3B) and mlx-serve (3.8-27B) combine batching with speculation.</td></tr>
+<tr><td>Evidence</td><td>Measured on this Mac, with these prompts, at this concurrency? Is the feature active, not just configured?</td><td>No public M3 Ultra numbers exist for these engines. A measured accept length of 1.488 contradicted a published 5.14 on the same engine.</td></tr>
+</tbody></table></div>
+
+<h2 id="s3"><span class="no">3</span>Hardware model: bandwidth versus per-token overhead</h2>
+<p>Each generated token costs (a) reading the active weights from memory and (b) fixed per-step work: hundreds of kernel launches, expert routing and scattered expert reads, CPU–GPU synchronisation and sampling. Which one dominates decides what helps.</p>
+<figure>
+<svg viewBox="0 0 900 250" role="img" aria-labelledby="f2t f2d" font-family="IBM Plex Sans Condensed, Arial Narrow, sans-serif">
+<title id="f2t">Per-token time composition, dense 27B versus 35B-A3B</title>
+<desc id="f2d">Two horizontal bars on a shared millisecond scale. Dense Qwen 27B at 8-bit: about 35 ms of weight reading at 800 GB/s, with comparatively small other overhead. Qwen3.6-35B-A3B at 8-bit: about 4 ms of weight reading and about 7.5 ms of other per-step work, total about 11.5 ms.</desc>
+<g font-size="13" fill="#a3bfd9">
+<line x1="220" y1="200" x2="220" y2="205" stroke="#a3bfd9"/><text x="220" y="222" text-anchor="middle">0</text>
+<line x1="340" y1="200" x2="340" y2="205" stroke="#a3bfd9"/><text x="340" y="222" text-anchor="middle">10</text>
+<line x1="460" y1="200" x2="460" y2="205" stroke="#a3bfd9"/><text x="460" y="222" text-anchor="middle">20</text>
+<line x1="580" y1="200" x2="580" y2="205" stroke="#a3bfd9"/><text x="580" y="222" text-anchor="middle">30</text>
+<line x1="700" y1="200" x2="700" y2="205" stroke="#a3bfd9"/><text x="700" y="222" text-anchor="middle">40 ms per token</text>
+<line x1="220" y1="200" x2="760" y2="200" stroke="#a3bfd9"/></g>
+<defs><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#f2b64e" stroke-width="3"/></pattern></defs>
+<text x="20" y="72" fill="#fff" font-size="15" font-weight="600">Dense 27B, 8-bit</text><text x="20" y="90" fill="#a3bfd9" font-size="12.5">~28 GB read per token</text>
+<rect x="220" y="55" width="420" height="40" fill="#8cc4f2"/><rect x="640" y="55" width="50" height="40" fill="url(#hatch)" stroke="#f2b64e"/>
+<text x="430" y="80" fill="#0b2541" font-size="13" text-anchor="middle" font-weight="600">weight reads ~35 ms</text>
+<text x="700" y="80" fill="#f2b64e" font-size="12.5">other work (small)</text>
+<text x="20" y="152" fill="#fff" font-size="15" font-weight="600">35B-A3B, 8-bit</text><text x="20" y="170" fill="#a3bfd9" font-size="12.5">~3.5 GB read per token</text>
+<rect x="220" y="135" width="48" height="40" fill="#8cc4f2"/><rect x="268" y="135" width="90" height="40" fill="url(#hatch)" stroke="#f2b64e"/>
+<text x="370" y="160" fill="#f2b64e" font-size="12.5">reads ~4 ms + other per-step work ~7.5 ms = ~11.5 ms measured step (M4 Pro)</text>
+<g font-size="12.5"><rect x="220" y="18" width="14" height="14" fill="#8cc4f2"/><text x="240" y="30" fill="#dbe8f5">weight reads (scale with bandwidth and quant bits)</text>
+<rect x="560" y="18" width="14" height="14" fill="url(#hatch)" stroke="#f2b64e"/><text x="580" y="30" fill="#dbe8f5">fixed per-step work (does not)</text></g>
+</svg>
+<figcaption><span class="tag t-est">Estimate</span> Read times assume ~800 GB/s. The 11.5 ms MoE step is mlx-dspark's measurement on an M4 Pro. The evidence for overhead-bound decode: an M4 Pro (~273 GB/s) gets 86.9 tok/s on the 35B-A3B, an M3 Ultra (60-core) gets 81.8 tok/s at 6-bit.</figcaption>
+</figure>
+<div class="tw"><table>
+<thead><tr><th>Consequence</th><th>Dense 27B (bandwidth-bound)</th><th>35B-A3B (overhead-bound)</th></tr></thead>
+<tbody>
+<tr><td>4-bit vs 8-bit speed</td><td>Real trade: fewer bytes, faster decode</td><td>Barely matters; choose quant for quality (8-bit)</td></tr>
+<tr><td>Speculation gain</td><td>Large: 2–4× published on mlx-dspark for Qwen3.8-27B</td><td>Small: 1.32× (mlx-dspark), ~1.34× (mlx-vlm MTP on M4 Max)</td></tr>
+<tr><td>Batching gain</td><td>Rows share the whole weight read</td><td>Rows share only ~2.8B non-expert weights; 2.11× at B=8 (mlx-dspark baseline)</td></tr>
+<tr><td>Bigger chip helps?</td><td>Yes, via bandwidth</td><td>Little at batch 1</td></tr>
+</tbody></table></div>
+<h3>Memory facts that constrain co-hosting</h3>
+<ul>
+<li><strong>GPU memory cap.</strong> macOS lets the GPU wire only part of unified memory by default (roughly three quarters, <span class="tag t-unv">Unverified</span> exact figure for 256 GB). Raising it uses <code>sudo sysctl iogpu.wired_limit_mb=…</code>; leave headroom for macOS.</li>
+<li><strong>KV cost per token.</strong> Qwen3.8-27B: 0.086 GB per 1k tokens measured by mlx-dspark (64 KB target KV + 20 KB drafter context), ~16 GB at 262k. Qwen3.6-35B-A3B: 10 full-attention layers × 2 KV heads × 256 dim in bf16 ≈ 20 KB/token, ~5.4 GB at 262k <span class="tag t-est">Estimate</span>.</li>
+<li><strong>Co-residency.</strong> Models that generate simultaneously share one bandwidth pool; a dense model at 8-bit reads per token about as much as a 13B-active MoE at 4-bit. The 35B-A3B is the cheapest co-tenant because it reads little per token, but its prefill still contends for GPU compute.</li>
+</ul>
+
+<h2 id="s4"><span class="no">4</span>Engine capability matrix</h2>
+<p>The central question of the session: can an engine batch concurrent requests <em>and</em> speculate at the same time on Qwen's hybrid (Gated DeltaNet + attention) models? It is hard because each request accepts a different number of drafts per round, and the recurrent GDN state cannot be trimmed like a KV list; it has to be rebuilt per row.</p>
+<div class="tw"><table>
+<thead><tr><th>Engine</th><th>Batching</th><th>Speculation</th><th>Both at once on Qwen hybrids</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td><strong>MTPLX</strong></td><td>Scheduler modes: serial, cooperative, ar_batch, mtp_batch</td><td>Native MTP, exact rejection sampling</td><td><strong>Yes</strong> for Qwen3.6-35B-A3B: fixed B3/B8 lanes, MTP depth 1 <span class="tag t-src">Sourced</span></td><td>Requires an unreleased mlx-lm fix; 131,072-token cap; no vision or <code>response_format</code> in the lane</td></tr>
+<tr><td><strong>mlx-serve</strong></td><td><code>--max-concurrent N</code></td><td>Native MTP (sidecar), PLD, Gemma drafter, DFlash</td><td><strong>Yes</strong> for Qwen3.8-27B: grouped MTP verify, 72 → 119 tok/s aggregate at 4 streams (M4 Max) <span class="tag t-src">Sourced</span></td><td>MTP on MoE trunks is opt-in per request; batched MTP on 35B-A3B unmeasured</td></tr>
+<tr><td><strong>Inco Splash</strong></td><td>Continuous batching, paged KV indexed by prefix</td><td>DFlash 2 draft is the only decode path (not optional)</td><td><strong>Yes</strong> for Qwen3.8-27B and Qwen3.6-35B-A3B: per-request draft state inside the batch; GDN state snapshotted at prefix boundaries <span class="tag t-src">Sourced</span></td><td>Two models only, 4-bit only, Splash packages only; JSON Schema output and image input supported; macOS 26.4+; vendor benchmarks only</td></tr>
+<tr><td><strong>mlx-dspark</strong></td><td><code>--max-batch N</code>, hybrids in baseline mode</td><td>DSpark, DFlash, DFlash 2, n-gram lookup</td><td><strong>No</strong>: batched speculation is dense-only <span class="tag t-src">Sourced</span></td><td>Best-documented single-stream numbers; per-machine calibration</td></tr>
+<tr><td>vllm-metal 0.28/0.29</td><td>Continuous, paged, packed prefill</td><td>Batched MTP on Metal: Gemma 4 only</td><td>No</td><td>Lowest TTFT under agent load in its own SiliconBench runs; hybrid prefix cache experimental and not combinable with speculation</td></tr>
+<tr><td>vllm-mlx</td><td>Continuous</td><td>MTP</td><td>No on the multimodal path (MTP only when batch is 1 and greedy)</td><td>Text-only path untested here</td></tr>
+<tr><td>Splash</td><td>Refuses to install or start</td><td>macOS below 26.4, or pre-M3 chip</td><td>Upgrade macOS; the M2 Ultra host cannot run it</td></tr>
+<tr><td>Splash</td><td>Model refused</td><td>Plain MLX or Transformers checkpoint</td><td>Splash packages only</td></tr>
+<tr><td>Splash</td><td>Port in use at startup</td><td>Default 8000 shared with MTPLX</td><td>Move one server's port</td></tr>
+<tr><td>Splash</td><td>Fewer concurrent requests fit than expected</td><td>Startup memory budget shrunk by co-resident backends</td><td>Set <code>--max-memory</code>; bench alone first</td></tr>
+<tr><td>mlx-vlm</td><td>—</td><td>MTP drafter</td><td>—</td><td><span class="tag t-bad">Known bug</span> 0.6.2: MTP drafter crashes on the 35B-A3B (#1317). Use for vision without <code>--draft-model</code></td></tr>
+</tbody></table></div>
+<div class="note"><p><strong>Why the combination is worth less than it sounds.</strong> Batching and speculation both fill idle compute. vllm-metal measured batched MTP on Gemma 4 E4B at +20% output tok/s at concurrency 1 and +0% at 8. mlx-dspark measured batched speculation at 0.97× of batched baseline at B=4 on a dense 4B. The mlx-serve, MTPLX and Splash numbers show real gains, so measure rather than assume (WP5).</p></div>
+<div class="note warn"><p><strong>Splash was missing from the first revision of this matrix.</strong> It launched on 2026-09-17 and was not found because only engines named in the session were searched. Treat this matrix as a snapshot, not a census.</p></div>
+
+<h2 id="s5"><span class="no">5</span>WP1: Qwen3.6-35B-A3B on MTPLX</h2>
+<p><strong>Goal.</strong> Two candidate backends on the same checkpoint family: a single-stream MTP server and the batched-MTP (<code>mtp_batch</code>) server for concurrent agents.</p>
+<h3>Preconditions</h3>
+<ul>
+<li>Checkpoints from the official catalog only: <code>Youssofal/Qwen3.6-35B-A3B-MTPLX-Optimized-Speed</code> (4-bit body, calibrated INT4 MTP heads) or <code>…-Optimized-Balance</code> (6-bit body). The non-FP16 builds are correct for M3.</li>
+<li>Do <strong>not</strong> use third-party bundles with a sidecar attached (for example the lightning-mlx packs). MTPLX refuses sidecars that were not trained against the exact trunk.</li>
+<li>For <code>mtp_batch</code>: install the mlx-lm commit from PR #1642 into the same environment. Released mlx-lm 0.31.3 lacks it and leaks a Metal buffer per token during long batched decode. <code>uv sync</code> can silently revert it.</li>
+</ul>
+<h3>Commands</h3>
+<pre><code class="sh"># install
+brew install youssofal/mtplx/mtplx          # or: python3 -m pip install mtplx
+
+# mlx-lm fix for the batch lane (source checkout shown in MTPLX docs)
+uv pip install --python .venv/bin/python --no-deps \
+  "mlx-lm @ git+https://github.com/ml-explore/mlx-lm.git@985af30df768a6f4dd2d0c7969d1868ca5dc3e1a"
+.venv/bin/python -c 'from mlx_lm.models.cache import ArraysCache; c=ArraysCache(1); assert hasattr(c, "_lp_advance") and hasattr(c, "_len_advance")'
+
+# A. single-stream server: measure depth on this Mac first
+mtplx tune --model Youssofal/Qwen3.6-35B-A3B-MTPLX-Optimized-Balance --retune
+mtplx serve --model Youssofal/Qwen3.6-35B-A3B-MTPLX-Optimized-Balance \
+  --profile sustained --max --port 8000 --no-stats-footer
+
+# B. batched MTP server (full construction contract; every flag is required)
+mtplx serve --model Youssofal/Qwen3.6-35B-A3B-MTPLX-Optimized-Speed --download \
+  --scheduler-mode mtp_batch --batching-preset throughput --generation-mode mtp \
+  --load-mtp --depth 1 --max-active-requests 8 --decode-batch-max 8 \
+  --context-window 131072 --profile turbo --verify-strategy target_prefix \
+  --verify-core stock --mtp-batch-numerics throughput --port 8010</code></pre>
+<div class="note warn"><p><strong>Port check.</strong> MTPLX's app and CLI share one server; <code>mtplx start</code> attaches to a running model instead of loading a second copy. Confirm that two <code>mtplx serve</code> processes on different ports really are independent before relying on A and B side by side. <span class="tag t-unv">Unverified</span></p></div>
+<h3>Batch lane behaviour</h3>
+<ul>
+<li>1 request uses the solo MTP route; 2–3 requests seal into a B3 lane; 4–8 into a B8 lane. Each row keeps its own KV, GDN state, sampler and seed.</li>
+<li>Numerics: <code>throughput</code> (default, fastest, bounded BF16 drift from solo), <code>balanced</code>, <code>b1-exact</code> (solo-exact, runs serially). Published: 349 aggregate tok/s for throughput and 260 for balanced on their workload; hardware not stated.</li>
+<li>Rejected in the lane with HTTP 400: <code>response_format</code>, vision input, background requests, depth other than 1. Every request must satisfy prompt + max_tokens ≤ 131,072.</li>
+</ul>
+<h3>Verification receipt</h3>
+<pre><code class="sh"># send at least 2 simultaneous requests, then:
+curl -s http://127.0.0.1:8010/health | jq '.scheduler | {mode, active_lane,
+  numerics: .mtp_batch_numerics, route: .mtp_batch_route_id,
+  last_real_width: .telemetry.last_real_width,
+  batch_histogram: .telemetry.batch_histogram,
+  fixed_width_histogram: .telemetry.fixed_width_histogram}'
+# pass: last_real_width between 2 and 8; histogram shows widths 3 and/or 8</code></pre>
+<h3>Settings</h3>
+<ul>
+<li>Presence and frequency penalty stay at 0 for coding and agent work (0 is an exact no-op that preserves MTP exactness).</li>
+<li>Warm-prefix session bank and SSD session cache are on by default; keep them.</li>
+<li>Sampling: read the checkpoint's <code>generation_config.json</code> rather than copying Qwen3.8 values (temperature 1.0 contract) onto Qwen3.6.</li>
+</ul>
+<h3>Exit criteria</h3>
+<ol><li>Both servers answer <code>/v1/chat/completions</code> and <code>/v1/messages</code>.</li><li>Receipt passes for B.</li><li>Single-stream tok/s and depth recorded from <code>mtplx tune</code>.</li><li>Greedy correctness check passes on A.</li></ol>
+
+<h2 id="s6"><span class="no">6</span>WP2: Qwen3.6-35B-A3B on mlx-dspark</h2>
+<p><strong>Goal.</strong> Two instances, because this engine cannot combine the two on hybrid models: one speculative (single stream), one batched baseline (swarm).</p>
+<h3>Draft model</h3>
+<ul>
+<li><strong>Instance A needs a standalone drafter.</strong> DSpark on this target uses a separate 1.53B dense block-8 draft model, not an MTP head inside the checkpoint. mlx-dspark resolves it from the target's model name and downloads it on first run, so the launch command has no <code>--drafter</code> flag. The same drafter serves 4-bit and 8-bit targets.</li>
+<li><strong>Instance B needs none.</strong> <code>--mode baseline</code> does not speculate.</li>
+<li><strong>Cost.</strong> The drafter takes about 5.7 ms of each round against an 11.5 ms target step (M4 Pro), which is why the speedup on this MoE is modest. It adds a small amount of resident memory beside the target.</li>
+<li><strong>Pin it.</strong> The drafter's repo id is not recorded in this guide <span class="tag t-unv">Unverified</span>. On first launch, read the resolved drafter repo and revision from the startup log or the benchmark JSON, write both into the version notes next to the launch script, and pass it explicitly with <code>--drafter</code> afterwards so a registry change cannot swap it silently.</li>
+</ul>
+<h3>Published reference (M4 Pro, 4-bit target, mlx 0.32)</h3>
+<div class="tw"><table>
+<thead><tr><th>Mode</th><th>Chat</th><th>Code</th><th>Math</th><th>Mean</th></tr></thead>
+<tbody>
+<tr><td>Baseline</td><td colspan="3">86.9 tok/s</td><td>1.00×</td></tr>
+<tr><td>DSpark, <code>--confidence-threshold 0.3</code></td><td>1.05×</td><td>1.24×</td><td>1.67×</td><td><strong>1.32×</strong> (114.5 tok/s)</td></tr>
+<tr><td>DSpark, default cap 3, no threshold</td><td colspan="3"></td><td>1.27×</td></tr>
+<tr><td>DFlash block 8</td><td colspan="3"></td><td>1.11×</td></tr>
+<tr><td>DFlash full 16</td><td colspan="3">accepts up to 9.62 tokens on math</td><td>0.94× (net loss)</td></tr>
+<tr><td>Batched baseline, B=2 / 4 / 8</td><td colspan="3">aggregate vs serial</td><td>1.30× / 1.73× / 2.11×</td></tr>
+</tbody></table></div>
+<p class="small">Why DFlash loses despite better drafting: each extra verify row pulls in a fresh set of routed experts, so what matters is acceptance per unit of verify width. Lookup drafts are off by default for this pair for the same reason (1.27× → 1.21× with them on).</p>
+<h3>Commands</h3>
+<pre><code class="sh">pip install mlx-dspark      # mlx &gt;= 0.32.0 installed automatically
+
+# A. single stream: confidence threshold must be passed explicitly; do not pin --max-draft
+mlx-dspark serve --model mlx-community/Qwen3.6-35B-A3B-8bit \
+  --confidence-threshold 0.3 --prefix-cache-slots 4 --port 8080
+
+# B. swarm: batched baseline (hybrids batch only without speculation)
+mlx-dspark serve --model mlx-community/Qwen3.6-35B-A3B-8bit \
+  --mode baseline --max-batch 8 --prefix-cache-slots 8 --port 8081
+
+# reproducible sweep on this Mac
+mlx-dspark benchmark --model mlx-community/Qwen3.6-35B-A3B-8bit --trials 3 --json</code></pre>
+<div class="note warn"><p><strong>8-bit versus 4-bit is unmeasured for this MoE.</strong> The project's general rule (8-bit gives the best ratio) failed on its other MoE (LFM2.5-8B-A1B was a net loss at 8-bit). The drafter resolves for any quant. Run the benchmark on both and let the owner choose; default to 8-bit for quality.</p></div>
+<h3>Settings</h3>
+<ul>
+<li>Leave <code>--kv-bits</code> off: slightly slower at 32k, and this model's KV is small.</li>
+<li>Never pass <code>--wired-limit</code>: can hang macOS hard enough to need a power cycle; no measured speed gain.</li>
+<li>Prefix caching: v0.10.1+ stable-boundary snapshots fix the Qwen3.6 turn-2 miss caused by the pre-filled <code>&lt;think&gt;</code> opener. Keep it on.</li>
+<li>Agents: <code>--no-thinking</code> for tool loops unless reasoning is needed; the model otherwise thinks before every tool call.</li>
+<li>Binds <code>127.0.0.1</code> by default; add <code>--api-key</code> only if exposed.</li>
+</ul>
+<h3>Verification receipt</h3>
+<p>Each response carries an <code>x_mlx_dspark</code> block: accept length, decode and end-to-end tok/s, TTFT, prefix-cache tokens. Pass for A: mean accept length and speedup in the same range as the reference table (chat near 1.0×, math clearly above). <code>GET /machine</code> reports this Mac's measured bandwidth and roofline.</p>
+<h3>Exit criteria</h3>
+<ol><li>Both instances healthy on 8080 and 8081.</li><li>Resolved drafter repo and revision recorded in the version notes, and instance A relaunched with it pinned via <code>--drafter</code>.</li><li>Benchmark JSON for 4-bit and 8-bit saved with device stamp.</li><li>Correctness check on A passes.</li></ol>
+
+<h2 id="s7"><span class="no">7</span>WP3: Qwen3.8-27B 4-bit on mlx-serve</h2>
+<p><strong>Goal.</strong> A concurrent MTP backend for the dense 27B, where batched MTP has published gains.</p>
+<h3>Preconditions</h3>
+<ul>
+<li><strong>macOS 26.2 or later</strong>; the bundled MLX targets that version.</li>
+<li><strong>A checkpoint with an MTP sidecar.</strong> Without one, mlx-serve only does prompt-lookup speculation. Grounded choice: <code>Youssofal/Qwen3.8-27B-MTPLX-Optimized-Speed</code> (4-bit dynamic, 20.4 GB, 23.6 GB peak; 96.0% top-1 agreement with bf16, KL 0.012); mlx-serve states it loads MTPLX-published artifacts unmodified. <code>ddalcu/Qwen3.8-27B-MLX-Serve-4bit</code> exists but its contents are <span class="tag t-unv">Unverified</span>. The owner's existing affine g64 4-bit pack probably has no MTP head.</li>
+<li>A release after 26.9.3, or the workaround below.</li>
+</ul>
+<h3>Commands</h3>
+<pre><code class="sh">brew tap ddalcu/mlx-serve https://github.com/ddalcu/mlx-serve
+brew install mlx-serve
+
+mlx-serve --model ~/.mlx-serve/models/Youssofal/Qwen3.8-27B-MTPLX-Optimized-Speed \
+  --serve --host 127.0.0.1 --port 11234 \
+  --max-concurrent 4 --metrics --prefix-cache-disk 20GB
+
+# only if pinned to 26.9.3 (grouped-verify crash on concurrent sampled requests, #446)
+MLX_SERVE_MTP_BATCH_CORR=0 mlx-serve ...</code></pre>
+<h3>Published reference (M4 Max)</h3>
+<ul>
+<li>4 MTP streams sharing one verify: 72 → 119 tok/s aggregate.</li>
+<li>4 streams at 28k context: 26 → 64 tok/s after the batched-KV copy fix.</li>
+<li>Grouped verify per stream: 39 vs 20 tok/s (issue #446 reporter).</li>
+<li>Group planner over legacy per-request MTP, 4 streams: +30% at 4k, +27% at 16k, +19% at 64k (PR #412, M5 Max, Flash-Next).</li>
+</ul>
+<h3>Settings</h3>
+<ul>
+<li>MTP depth: adaptive up to <code>--mtp-depth</code> 3 (default). PLD stays on; it gates itself off on novel content.</li>
+<li><strong>No DFlash2 drafter.</strong> On 26.9.4 a DFlash2 drafter on a Qwen3.8-27B target fails at the first draft step (#454); older builds silently fell back (#224). With a drafter loaded, concurrent requests switch to the MTP head anyway.</li>
+<li>KV quantization: evidence conflicts (README: about −10% decode at 2–4k; latest release: 8-bit KV as fast as bf16 at long context). Leave off unless running long-context agents, then measure.</li>
+<li><code>--max-concurrent 1</code> did not serialise MTP groups on 26.9.3; do not use it as an off switch.</li>
+<li>Host defaults to <code>0.0.0.0</code>; always pass <code>--host 127.0.0.1</code>.</li>
+</ul>
+<h3>Verification receipt</h3>
+<p>mlx-serve logs per-request acceptance rate, per-round average and runtime-gate state for every speculative request; <code>--metrics</code> exposes Prometheus metrics. Pass: at concurrency 4, logs show MTP active on all four streams and no <code>GenerationFailed</code> with temperature &gt; 0.</p>
+<h3>Exit criteria</h3>
+<ol><li>MTP sidecar detected (log line or <code>/v1/models</code> capabilities).</li><li>Concurrency-4 sampled run completes with zero HTTP 500s.</li><li>Correctness check at temperature 0 passes.</li></ol>
+
+<h2 id="s7b"><span class="no">7b</span>WP3b: Qwen3.8-27B and Qwen3.6-35B-A3B on Inco Splash</h2>
+<p><strong>Goal.</strong> Stand up Splash for both models so WP5 can test the vendor's claim that it is the fastest engine for them. It is the strongest candidate on paper: it combines batching, speculation and hybrid-aware prefix caching, and also supports structured output and images.</p>
+<h3>Published reference (Inco, 48 GB M5 Pro, SPEED-Bench coding prompts to 32k, 1,024-token output, reasoning on, 27B at medium)</h3>
+<div class="tw"><table>
+<thead><tr><th>Metric</th><th>Qwen3.8-27B on Splash</th><th>Next fastest</th><th>35B-A3B on Splash</th><th>Next fastest</th></tr></thead>
+<tbody>
+<tr><td>Decode, short prompt</td><td>74 tok/s</td><td>oMLX 38</td><td>210 tok/s</td><td>oMLX 126</td></tr>
+<tr><td>Decode, 32k prompt</td><td>54 tok/s</td><td>oMLX 28</td><td>143 tok/s</td><td>Lily 85</td></tr>
+<tr><td>Prefill, 32k</td><td>363 tok/s</td><td>uzu 313</td><td>2,011 tok/s</td><td>Lily 1,572</td></tr>
+<tr><td>TTFT, cached 32k replay</td><td>282 ms</td><td>oMLX 2,049 ms</td><td>123 ms</td><td>oMLX 816 ms</td></tr>
+<tr><td>4 concurrent, aggregate</td><td>170 tok/s</td><td>oMLX 43</td><td>357 tok/s</td><td>oMLX 177</td></tr>
+</tbody></table></div>
+<div class="note warn"><p><strong>What these numbers do not show.</strong> The comparison set was oMLX, Lily, Ollama and uzu; MTPLX, mlx-serve and mlx-dspark were not tested. The numbers are Inco's own, on M5 hardware, with no independent replication at the time of writing. Decode figures include reasoning tokens. Inco also posted 144 tok/s for the 27B on an M5 Max without stated conditions.</p></div>
+<h3>Preconditions</h3>
+<ul>
+<li><strong>macOS 26.4 or later</strong> and an M3-or-newer chip. Check <code>sw_vers</code> first; this is stricter than mlx-serve's 26.2. The M2 Ultra host cannot run Splash.</li>
+<li>Splash packages only: <code>incoai/Qwen3.8-27B-Splash</code> (17.4 GB: 4-bit target, DFlash 2 draft, vision encoder, tokenizer) and <code>incoai/Qwen3.6-35B-A3B-Splash</code>. Plain MLX or Transformers checkpoints are refused.</li>
+<li><strong>4-bit only.</strong> There is no 8-bit option, so Splash cannot fill the Optimized-Quality 8-bit role. Its quality relative to bf16 is not published; run the owner's eval set before routing agent traffic.</li>
+<li>The default port is 8000, which collides with MTPLX in WP1. Move one of them.</li>
+</ul>
+<h3>Commands</h3>
+<pre><code class="sh">brew install incoai/tap/splash
+splash --help                       # confirm the port flag and ceilings before launching
+
+# first run downloads, verifies, checks memory and tunes to this Mac
+splash serve --model incoai/Qwen3.8-27B-Splash --port 8020        # port flag unverified
+splash serve --model incoai/Qwen3.6-35B-A3B-Splash --port 8021    # port flag unverified
+
+# the only settings are ceilings, for sharing the Mac with other backends:
+#   --max-memory   --max-context</code></pre>
+<h3>Settings</h3>
+<ul>
+<li>Reasoning follows the model default. Per request, <code>"reasoning_effort": "none"</code> turns it off, and the 27B also accepts <code>low</code>, <code>medium</code> and <code>xhigh</code>. Benchmark at medium to match the published numbers.</li>
+<li>Splash sets its memory budget at startup: Metal's recommended working-set limit minus weights (15 GiB for the 27B), draft (1.2 GiB) and per-token state. Other backends on the same host shrink that budget; set <code>--max-memory</code> explicitly when co-hosting.</li>
+<li>APIs: OpenAI Chat Completions and Responses, Anthropic Messages, streaming, tool calls, JSON Schema output, image input.</li>
+</ul>
+<h3>Verification receipt</h3>
+<ul>
+<li>Speculation cannot be switched off, so there is no in-engine non-speculative baseline. For correctness, compare Splash's temperature-0 output with MTPLX or mlx-serve output and report the divergence rate, not token identity (different kernels and 4-bit packs will differ).</li>
+<li>Concurrency: send 4 simultaneous requests and confirm aggregate tok/s clearly exceeds single-request tok/s. Engine telemetry fields are <span class="tag t-unv">Unverified</span>; check <code>--help</code> and the README for a health or metrics endpoint.</li>
+<li>Cache: replay a 32k prompt twice; the second TTFT should drop to hundreds of milliseconds.</li>
+</ul>
+<h3>Exit criteria</h3>
+<ol><li>Both packages serve on non-conflicting ports.</li><li>Cached-replay TTFT and 4-concurrent aggregate recorded on this Mac.</li><li>Quality spot-check against an 8-bit reference on the owner's eval set.</li></ol>
+
+<h2 id="s8"><span class="no">8</span>WP4: diagnose the DFlash2 4-bit acceptance anomaly</h2>
+<p><strong>Observation (owner's box, mlx-dspark v0.19.0, <code>--mode dflash</code>, temperature 0, ~125 tokens).</strong> 4-bit affine g64 target: accept_len 1.488, 17.0–17.3 tok/s with speculation vs 17.6–18.0 without. 8-bit target: accept ~4.0 from a single short probe on a different basis; 22–31 tok/s.</p>
+<p><strong>Why it is anomalous.</strong> mlx-dspark's own published result for the same target and drafter: 4-bit accept 5.14 and 2.30× (M4 Pro); 8-bit accept 5.53 and 3.63×. An independent M5 Max run of the stock bf16 DFlash2 drafter on affine 4-bit g64 targets measured 1.84–1.87× with 88–89% per-draft acceptance. The owner's 4-bit <em>dense</em> baseline (17.6–18 tok/s) is also far below the M5 Max's 33.3 tok/s on the same pack format, so something is slowing the whole 4-bit path, not only the drafter. A quantization-aligned drafter would help little: the only published study found about +2% acceptance.</p>
+<h3>Steps, in order</h3>
+<ol>
+<li>Clean environment per rule 2 (nothing else resident; the M5 Max author's first run was invalidated by 37 GB of co-resident models).</li>
+<li>Re-measure the 8-bit pack with the identical protocol as the 4-bit.</li>
+<li>Measure dense baselines for both packs directly with <code>mlx_lm</code>. If 4-bit dense stays below 8-bit dense, the fault is upstream of speculation.</li>
+<li>Check context depth: at 32k, fixed cap-7 configs on this 4-bit target dropped to 0.53–0.97×, cap 3 gave 1.48×. Use short prompts and <code>--max-draft auto</code> (v0.14.0+ prices depth).</li>
+<li>Diff the two packs: <code>config.json</code>, tokenizer hash, chat template, wrapper layout (<code>language_model.model.layers</code> vs <code>model.layers</code>).</li>
+<li>Dump hidden states at <code>target_layer_ids [5, 19, 33, 47, 61]</code> from both packs for one prompt; cosine similarity should exceed ~0.99. Never change those layer ids; the drafter was trained on them.</li>
+<li>Check greedy spec output is token-exact against dense on both packs (a GDN rollback bug would break this).</li>
+<li>Cross-check with the <code>cfontes/qwen3.8-27b-mlx-dflash2</code> MLX implementation on the 4-bit pack. Splash (WP3b) is a second reference: it runs a DFlash 2 draft on a 4-bit Qwen3.8-27B target at the fastest published speeds, which further suggests the problem is specific to the mlx-dspark path on this box.</li>
+<li>Only then sweep caps.</li>
+</ol>
+<p><strong>Exit.</strong> A root cause, or a clean result that contradicts the published numbers; if the latter, write it up for upstream.</p>
+
+<h2 id="s9"><span class="no">9</span>WP5: comparative benchmark</h2>
+<p><strong>Goal.</strong> Decide, with evidence from this Mac, which backend serves the single-stream route and which serves the swarm route. Extend the existing bench repo (<code>~/bench-qwen36-spec</code>) rather than starting a new harness.</p>
+<h3>Matrix</h3>
+<div class="tw"><table>
+<thead><tr><th>Config id</th><th>Model</th><th>Engine and mode</th><th>Concurrency</th></tr></thead>
+<tbody>
+<tr><td>A1</td><td>35B-A3B Balance/Speed</td><td>MTPLX solo MTP</td><td>1</td></tr>
+<tr><td>A2</td><td>35B-A3B Speed</td><td>MTPLX <code>mtp_batch</code> throughput</td><td>1, 2, 4, 8</td></tr>
+<tr><td>B1</td><td>35B-A3B 4-bit and 8-bit</td><td>mlx-dspark DSpark conf 0.3</td><td>1</td></tr>
+<tr><td>B2</td><td>35B-A3B 8-bit</td><td>mlx-dspark baseline <code>--max-batch 8</code></td><td>1, 2, 4, 8</td></tr>
+<tr><td>C1</td><td>Qwen3.8-27B 4-bit MTP pack</td><td>mlx-serve <code>--max-concurrent 4</code></td><td>1, 2, 4</td></tr>
+<tr><td>S1</td><td>Qwen3.8-27B Splash package (4-bit)</td><td>Splash</td><td>1, 2, 4, 8</td></tr>
+<tr><td>S2</td><td>35B-A3B Splash package (4-bit)</td><td>Splash</td><td>1, 2, 4, 8</td></tr>
+<tr><td>C0</td><td>Same models</td><td>Each engine's non-speculative path (none exists for Splash)</td><td>1</td></tr>
+</tbody></table></div>
+<h3>Workloads and metrics</h3>
+<ul>
+<li>Prompts: short (~1k tokens), agent-realistic (~32k), and replayed Hermes traces. Same prompt set for every config. Sampling at the agents' real settings, plus a temperature-0 run for correctness.</li>
+<li>Include cached-replay TTFT at 32k (Splash's strongest published claim). Record per request: TTFT, decode tok/s, end-to-end seconds, tokens generated, HTTP status, engine telemetry (accept length, batch width).</li>
+<li>Report per config and concurrency: p50/p95 TTFT, per-stream and aggregate tok/s, <strong>seconds to a correct answer</strong> (the decision metric; tok/s only explains it), error count.</li>
+</ul>
+<h3>Pre-committed decision rules</h3>
+<ol>
+<li>Any config with a correctness failure or any HTTP 5xx under sampled concurrency is disqualified until fixed.</li>
+<li>Any batching or speculative config without its receipt (section 5, 6, 7) is reported as unproven, not as a result.</li>
+<li>Single-stream route: lowest median seconds-to-correct-answer at concurrency 1.</li>
+<li>Swarm route: highest aggregate tok/s at the owner's expected concurrency, subject to a p95 TTFT ceiling the owner sets <strong>before</strong> the run (section 14, question 2).</li>
+<li>Ties within 5% go to the engine already in the stack (lower change cost).</li>
+<li>A 4-bit-only engine (Splash) can win a route only if it passes the owner's quality check against the 8-bit reference; speed alone does not qualify it for eval or agent traffic.</li>
+</ol>
+
+<h2 id="s10"><span class="no">10</span>WP6: router integration</h2>
+<p>The existing FastAPI router dispatches by model alias and by image presence, because no MLX speculative drafter runs through a vision tower. That constraint still holds for every engine here.</p>
+<figure>
+<svg viewBox="0 0 900 480" role="img" aria-labelledby="f3t f3d" font-family="IBM Plex Sans Condensed, Arial Narrow, sans-serif">
+<title id="f3t">Target serving topology after WP6</title>
+<desc id="f3d">Clients (Hermes agents, Claude Code) call a FastAPI router. The router sends image requests to mlx-vlm without a drafter, requests with response_format to a non-batch backend, single-stream text to the WP5 single-stream winner, and concurrent agent traffic to the WP5 swarm winner. Candidate backends on the M3 Ultra: MTPLX on ports 8000 and 8010, mlx-dspark on 8080 and 8081, mlx-serve on 11234, Splash on 8020 and 8021. The M2 Ultra is shown as an optional host, pending an owner decision.</desc>
+<defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#dbe8f5"/></marker></defs>
+<g fill="none" stroke="#dbe8f5" stroke-width="1.5">
+<rect x="20" y="170" width="150" height="70"/>
+<rect x="230" y="160" width="170" height="90"/>
+<rect x="470" y="20" width="410" height="386"/>
+</g>
+<text x="95" y="200" fill="#fff" font-size="16" text-anchor="middle" font-weight="600">Clients</text>
+<text x="95" y="222" fill="#a3bfd9" font-size="12.5" text-anchor="middle">Hermes agents, Claude Code</text>
+<text x="315" y="190" fill="#fff" font-size="16" text-anchor="middle" font-weight="600">FastAPI router</text>
+<text x="315" y="210" fill="#a3bfd9" font-size="12.5" text-anchor="middle">alias, image presence,</text>
+<text x="315" y="226" fill="#a3bfd9" font-size="12.5" text-anchor="middle">response_format, load</text>
+<line x1="170" y1="205" x2="228" y2="205" stroke="#dbe8f5" stroke-width="1.5" marker-end="url(#ah2)"/>
+<text x="490" y="45" fill="#fff" font-size="15" font-weight="600">Mac Studio M3 Ultra, 256 GB (all on 127.0.0.1)</text>
+<g font-size="13">
+<rect x="490" y="62" width="370" height="46" fill="rgba(143,214,186,.12)" stroke="#8fd6ba"/>
+<text x="502" y="82" fill="#fff">mlx-vlm server, no draft model</text><text x="502" y="99" fill="#a3bfd9">image and video requests (existing)</text>
+<rect x="490" y="118" width="370" height="46" fill="none" stroke="#8cc4f2" stroke-dasharray="5 4"/>
+<text x="502" y="138" fill="#fff">MTPLX :8000 solo MTP, :8010 mtp_batch</text><text x="502" y="155" fill="#a3bfd9">WP1 candidate, 35B-A3B</text>
+<rect x="490" y="174" width="370" height="46" fill="none" stroke="#8cc4f2" stroke-dasharray="5 4"/>
+<text x="502" y="194" fill="#fff">mlx-dspark :8080 DSpark, :8081 batched baseline</text><text x="502" y="211" fill="#a3bfd9">WP2 candidate, 35B-A3B</text>
+<rect x="490" y="230" width="370" height="46" fill="none" stroke="#8cc4f2" stroke-dasharray="5 4"/>
+<text x="502" y="250" fill="#fff">mlx-serve :11234 grouped MTP</text><text x="502" y="267" fill="#a3bfd9">WP3 candidate, Qwen3.8-27B 4-bit</text>
+<rect x="490" y="286" width="370" height="46" fill="rgba(143,214,186,.12)" stroke="#8fd6ba"/>
+<text x="502" y="306" fill="#fff">mtplx serve, Qwen3.6-27B text (existing)</text><text x="502" y="323" fill="#a3bfd9">stays until WP5 decides</text>
+<rect x="490" y="342" width="370" height="46" fill="none" stroke="#8cc4f2" stroke-dasharray="5 4"/>
+<text x="502" y="362" fill="#fff">Splash :8020 Qwen3.8-27B, :8021 35B-A3B</text><text x="502" y="379" fill="#a3bfd9">WP3b candidate; text, JSON Schema and images</text>
+</g>
+<g stroke="#dbe8f5" stroke-width="1.2" fill="none">
+<path d="M400,190 L488,85" marker-end="url(#ah2)"/><path d="M400,200 L488,141" marker-end="url(#ah2)"/><path d="M400,205 L488,197" marker-end="url(#ah2)"/><path d="M400,212 L488,253" marker-end="url(#ah2)"/><path d="M400,222 L488,309" marker-end="url(#ah2)"/><path d="M400,232 L488,365" marker-end="url(#ah2)"/></g>
+<rect x="470" y="421" width="410" height="45" fill="none" stroke="#f2b64e" stroke-dasharray="5 4"/>
+<text x="490" y="441" fill="#f2b64e" font-size="13">Mac Pro M2 Ultra, 96 GB: optional host, owner decision</text>
+<text x="490" y="457" fill="#a3bfd9" font-size="12">FP16 builds on M1/M2; separate bandwidth pool</text>
+</svg>
+<figcaption>Solid green: existing backends. Dashed blue: candidates stood up by WP1–WP3b on new ports. Only WP5's winners get routed traffic.</figcaption>
+</figure>
+<h3>Routing rules to implement after WP5</h3>
+<ol>
+<li>Request contains an image or video part: mlx-vlm, no drafter.</li>
+<li>Request sets <code>response_format</code>: any backend except MTPLX <code>mtp_batch</code> (it returns 400).</li>
+<li>Prompt + max_tokens above 131,072 on the 35B-A3B: not MTPLX <code>mtp_batch</code>.</li>
+<li>Otherwise route by alias to the WP5 winner for single-stream or swarm traffic. Keep one fallback alias to the existing backend.</li>
+<li>If Splash wins both routes, rules 1–3 may collapse, because Splash accepts images and JSON Schema in the same batched speculative path. Do not remove the mlx-vlm route until image requests are verified on Splash on this Mac, and keep an 8-bit backend for eval traffic (Splash is 4-bit only).</li>
+<p><strong>Downstream consequences to flag in the PR:</strong> health checks per backend (each exposes <code>/health</code>); separate process supervision per port; a failing grouped-verify round in mlx-serve takes down every request in that group, so the router should retry idempotent requests once on 5xx.</p>
+
+<h2 id="s11"><span class="no">11</span>Reference: larger models discussed (not in this build)</h2>
+<details><summary>Qwen3.8-27B checkpoints and settings (MTPLX catalog)</summary>
+<div class="tw"><table><thead><tr><th>Pack</th><th>Size</th><th>Fidelity vs bf16</th><th>Use</th></tr></thead><tbody>
+<tr><td>Optimized-Quality (8-bit dynamic)</td><td>29.4 GB, 32.7 GB peak</td><td>99.3% top-1, KL 0.0005</td><td>Agents, eval baselines</td></tr>
+<tr><td>Optimized-Speed (4-bit dynamic)</td><td>20.4 GB, 23.6 GB peak</td><td>96.0% top-1, KL 0.012</td><td>Coding default</td></tr>
+<tr><td>Bare-Speed (flat 4-bit)</td><td>16.0 GB, 17.0 GB peak</td><td>lower</td><td>Skip</td></tr></tbody></table></div>
+<p>Sampling contract: temperature 1.0, top-p 0.95, top-k 20. Set reasoning effort per request (medium for routine agent turns). Avoid Ollama for this architecture (a same-box report measured ~14 tok/s at Q4_K_M). Do not quantize its KV cache; do not enable static 1M YaRN by default.</p></details>
+<details><summary>DeepSeek-V4-Flash via antirez/ds4</summary>
+<ul>
+<li>Engine: ds4 only, with ds4-produced GGUFs (not Unsloth). Beta; pin a commit and run <code>ds4-eval --suite hard-smoke</code> after updates.</li>
+<li>Checkpoint on 256 GB: V4-Flash-0731 Q4 (~155 GB resident). Routed experts are natively FP4, so Q4 is near-lossless; Q2 (~81 GB) is the lossy tier. V4.1-Flash is Q2-only on 256 GB (Engram tables stay on disk). Vision-Exp is a separate checkpoint and does not fit beside 0731 Q4.</li>
+<li>Full 1M context adds ~26 GB. Think Max needs ≥384k context. Sampling temperature 1.0, top-p 1.0.</li>
+<li>DSpark in ds4 uses opportunistic sampling by default; pass <code>--mtp-exact-sampling</code> for any eval or A/B. A DSpark branch reports long-prompt stalls on macOS 27.</li>
+<li>Prefill is the agent bottleneck (58.5 tok/s at 32k on an M3 Max Q2); rely on KV snapshots and <code>--prefix-file</code>.</li></ul></details>
+<details><summary>GLM-5.3-Flash and Qwen3.8-Flash-Next</summary>
+<ul>
+<li>GLM-5.3-Flash: 320B total, 18B active. 4-bit ~178 GB (mixed 4/6-bit 179.7 GB preferred); 8-bit 346.7 GB does not fit. Stock mlx-lm lacks <code>glm5_next</code>; use Rapid-MLX 0.13.3+ (29.2 tok/s median on M3 Ultra, 4-bit) or ds4 (<code>--mtp</code>, requires <code>--power 100</code>).</li>
+<li>Qwen3.8-Flash-Next: 125B total, 6B active, plus a 51B n-gram embedding table. The owner's Vontra oQ4-MTP pack is 113 GB resident. ds4 keeps the n-gram table (95.37 GiB BF16) on disk beside 41.73 GiB of weights. mlx-serve's pack: ~70 GB resident, 60 tok/s serial and 78 with MTP on M4 Max, one request at a time.</li>
+<li>GLM 4-bit plus Flash-Next oQ4 (~293 GB) does not fit one 256 GB host. Split hosts or use ds4 for Flash-Next.</li></ul></details>
+
+<h2 id="s12"><span class="no">12</span>Failure modes</h2>
+<div class="tw"><table>
+<thead><tr><th>Engine</th><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>MTPLX</td><td>Memory creeps during long batched decode</td><td>mlx-lm reverted to released 0.31.3 (no PR #1642 fix)</td><td>Reinstall the fix commit; server checks at startup</td></tr>
+<tr><td>MTPLX</td><td>HTTP 400 on some requests</td><td><code>response_format</code>, vision input, or depth ≠ 1 sent to the batch lane</td><td>Router rule 2; send elsewhere</td></tr>
+<tr><td>MTPLX</td><td>"Batching" with no gain</td><td>No multi-row cohort formed</td><td>Check <code>last_real_width</code> and histograms</td></tr>
+<tr><td>MTPLX</td><td>Server refuses a model</td><td>Sidecar not trained against this trunk</td><td>Use official Youssofal packs or <code>mtplx forge</code></td></tr>
+<tr><td>mlx-dspark</td><td>Speedup near 1.0×</td><td>Chat-heavy traffic on an MoE target</td><td>Expected (1.05× on chat); use the batch instance for swarms</td></tr>
+<tr><td>mlx-dspark</td><td>Big slowdown at long context</td><td>Wide verify re-reads KV per row</td><td>Do not pin <code>--max-draft</code>; v0.14.0+ adapts to depth</td></tr>
+<tr><td>mlx-dspark</td><td>Speedup changes after an upgrade with no config change</td><td>Registry resolved a different drafter</td><td>Pin the drafter with <code>--drafter</code>; compare against version notes</td></tr>
+<tr><td>mlx-dspark</td><td>macOS hard hang</td><td><code>--wired-limit</code></td><td>Never use it</td></tr>
+<tr><td>mlx-serve</td><td>HTTP 500 for every request in a group</td><td>#446 grouped verify with sampled requests (26.9.3)</td><td>Upgrade, or <code>MLX_SERVE_MTP_BATCH_CORR=0</code></td></tr>
+<tr><td>mlx-serve</td><td>No speedup</td><td>Checkpoint has no MTP sidecar</td><td>Use an MTP-bearing pack</td></tr>
+<tr><td>mlx-serve</td><td>Every request fails at first draft</td><td>DFlash2 drafter path (#454)</td><td>Do not load a drafter</td></tr>
+<tr><td>mlx-serve</td><td>Reachable from the LAN</td><td>Default host <code>0.0.0.0</code></td><td><code>--host 127.0.0.1</code></td></tr>
+<tr><td>mlx-vlm</td><td>Crash on first generation with MTP drafter</td><td>#1317 on 35B-A3B MoE (0.6.2)</td><td>Serve vision without <code>--draft-model</code></td></tr>
+<tr><td>Any</td><td>Speeds drift between runs</td><td>Co-resident models, thermals</td><td>Rule 2 bench hygiene</td></tr>
+<tr><td>Any</td><td>OOM or swap when co-hosting</td><td>Weights + KV over the GPU memory cap</td><td>Budget per section 3; split hosts</td></tr>
+</tbody></table></div>
+
+<h2 id="s13"><span class="no">13</span>Corrections log</h2>
+<p>Claims made earlier in the session that turned out wrong. Recorded so they are not reintroduced.</p>
+<div class="tw"><table>
+<thead><tr><th>Earlier claim</th><th>Correction</th><th>Where the analysis went wrong</th></tr></thead>
+<tbody>
+<tr><td>"DSpark stays dead on Metal."</td><td>Only SGLang's DSpark path rejects Metal. ds4 runs DSpark on Metal for V4 Flash; mlx-dspark runs DSpark on Qwen targets.</td><td>Generalised one engine's device gate to the whole method.</td></tr>
+<tr><td>"No Qwen3.8 drafter exists for the bench."</td><td>DFlash2 (<code>incoai/Qwen3.8-27B-DFlash2</code>) and community DSpark heads exist.</td><td>Did not search for model-specific drafters.</td></tr>
+<tr><td>"Use lightning-mlx for MTPLX on the 35B-A3B."</td><td>MTPLX supports the 35B-A3B natively with official packs, and refuses foreign sidecars.</td><td>Relied on a third-party bundle page instead of the MTPLX catalog.</td></tr>
+<tr><td>"No Mac engine batches and speculates together on Qwen hybrids."</td><td>mlx-serve does (Qwen3.8-27B), and MTPLX does (35B-A3B B3/B8 lane).</td><td>Checked three engines and generalised; twice.</td></tr>
+<tr><td>First revision of the engine matrix listed MTPLX and mlx-serve as the only engines combining batching and speculation on Qwen hybrids.</td><td>Inco Splash (launched 2026-09-17) also does, for both models in this build.</td><td>Searched only engines named in the session.</td></tr>
+<tr><td>"Check mlx-dspark <code>--help</code>; flags unknown."</td><td>Flags are documented: <code>--max-draft auto</code>, <code>--confidence-threshold</code>, <code>--mode</code>, <code>--max-batch</code>.</td><td>Did not read the README before answering.</td></tr>
+<tr><td>Owner statement: "Qwen3.8-27B through Inco Splash is fastest."</td><td>Plausible and the leading candidate, but not established: vendor numbers on M5 hardware, against engines other than MTPLX, mlx-serve and mlx-dspark. WP5 decides.</td><td>Not an analysis error; recorded so the claim is tested, not assumed.</td></tr>
+<tr><td>Owner inference: "DeepSeek V4 Flash Q4 is faster than Qwen3.8-27B 8-bit."</td><td>Not established. Plausible for decode against plain Qwen, likely false against Qwen with MTP, likely false for prefill.</td><td>Bytes read per token is one input to speed, not the verdict.</td></tr>
+</tbody></table></div>
+
+<h2 id="s14"><span class="no">14</span>Unresolved questions (owner decides before build proceeds)</h2>
+<ol>
+<li><strong>Expected concurrency for Hermes.</strong> Typical and peak simultaneous requests. Decides whether the swarm route matters and which WP5 cells count.</li>
+<li><strong>p95 TTFT ceiling for the swarm route.</strong> Needed before WP5 runs (decision rule 4).</li>
+<li><strong>Quant for the 35B-A3B.</strong> 8-bit default for quality versus 4-bit/6-bit MTPLX packs; MTPLX packs are Speed (4-bit) and Balance (6-bit), so a like-for-like 8-bit comparison across engines is not available.</li>
+<li><strong>Role of the M2 Ultra.</strong> Reserve it, or host one backend to avoid bandwidth contention. ds4 on M2 Ultra is <span class="tag t-unv">Unverified</span>.</li>
+<li><strong>Does the 35B-A3B replace Qwen3.6-27B?</strong> Requires an eval on Hermes tasks, not a speed test.</li>
+<li><strong>mlx-serve checkpoint.</strong> MTPLX Optimized-Speed pack or <code>ddalcu/Qwen3.8-27B-MLX-Serve-4bit</code> (contents unverified).</li>
+<li><strong>Version pins.</strong> Whether #446 is in a tagged mlx-serve release; whether mlx-lm PR #1642 has been released.</li>
+<li><strong>Two MTPLX servers side by side.</strong> Confirm A and B in WP1 run as independent processes.</li>
+<li><strong>macOS version on the M3 Ultra.</strong> Splash needs 26.4+, mlx-serve 26.2+. An OS upgrade affects every backend on the host; schedule it before WP3 and WP3b.</li>
+<li><strong>Is 4-bit acceptable for agent traffic?</strong> Splash offers no 8-bit option. If 8-bit is required for Hermes, Splash can only take the latency route.</li>
+<li><strong>Splash port flag and telemetry.</strong> Not confirmed from the README; resolve with <code>splash --help</code>.</li>
+<li><strong>Consolidation.</strong> mlx-serve can also host ds4 and GGUF models; one process for many models is a single point of failure. Decide later, after WP5.</li>
+</ol>
+
+<h2 id="s15"><span class="no">15</span>Sources</h2>
+<ul class="small">
+<li>MTPLX: <a href="https://github.com/youssofal/MTPLX">README</a>, <a href="https://github.com/youssofal/MTPLX/blob/main/docs/concurrency.md">concurrency modes</a>, <a href="https://github.com/youssofal/MTPLX/blob/main/docs/concurrency/qwen35b-mtp-batch.md">35B-A3B B8 MTP lane</a>, <a href="https://github.com/youssofal/MTPLX/blob/main/CHANGELOG.md">changelog</a>, <a href="https://huggingface.co/Youssofal/Qwen3.6-35B-A3B-MTPLX-Optimized-Speed">35B Speed card</a>, <a href="https://huggingface.co/Youssofal/Qwen3.6-35B-A3B-MTPLX-Optimized-Balance">35B Balance card</a></li>
+<li>mlx-dspark: <a href="https://github.com/ARahim3/mlx-dspark">README with tables and tuning</a></li>
+<li>mlx-serve: <a href="https://github.com/ddalcu/mlx-serve">README</a>, <a href="https://github.com/ddalcu/mlx-serve/releases">releases</a>, <a href="https://github.com/ddalcu/mlx-serve/issues/446">#446</a>, <a href="https://github.com/ddalcu/mlx-serve/issues/454">#454</a>, <a href="https://github.com/ddalcu/mlx-serve/pull/412">PR #412</a>, <a href="https://huggingface.co/ddalcu/Qwen3.8-Flash-Next-MLX-Serve-4bit">Flash-Next pack</a></li>
+<li>vllm-metal: <a href="https://vllm.ai/blog/2026-09-22-vllm-metal-v0-28-0">release blog</a>; vllm-mlx: <a href="https://vllm-mlx.is-a.dev/guides/continuous-batching/">continuous batching guide</a></li>
+<li>Inco Splash: <a href="https://github.com/incoai/splash">README</a>, <a href="https://inco.ai/blog/splash/">launch post with method and tables</a>, <a href="https://huggingface.co/incoai/Qwen3.8-27B-Splash">Qwen3.8-27B package</a>, <a href="https://lmstudio.ai/blog/splash-engine">LM Studio integration</a></li>
+<li>mlx-vlm: <a href="https://github.com/Blaizzy/mlx-vlm/issues/1317">#1317</a></li>
+<li>DFlash2 on MLX 4-bit targets: <a href="https://huggingface.co/cfontes/qwen3.8-27b-mlx-dflash2/discussions/2">M5 Max discussion</a></li>
+<li>M3 Ultra 35B-A3B reference: <a href="https://omlx.ai/benchmarks/jyqet4u4">oMLX benchmark</a>; ds4: <a href="https://github.com/antirez/ds4">antirez/ds4</a>; Qwen3.6: <a href="https://unsloth.ai/docs/models/qwen3.6">Unsloth docs</a></li>
+</ul>
+<p class="small">Figures cited for M4 Pro, M4 Max and M5 Max are the projects' own. Treat all of them as starting points to beat on the M3 Ultra, not as expectations.</p>
+</main>
+</div>
+<script>
+/* minimal shell highlighter: comments, env assignments, flags, strings */
+document.querySelectorAll('pre code.sh').forEach(function(el){
+  var esc=function(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
+  el.innerHTML=el.textContent.split('\n').map(function(line){
+    var ci=line.indexOf('#'), code=line, com='';
+    if(ci>-1 && (ci===0 || /\s/.test(line[ci-1]))){code=line.slice(0,ci);com=line.slice(ci);}
+    var out=esc(code)
+      .replace(/(&quot;|"[^"]*"|'[^']*')/g,'<span class="hl-s">$1</span>')
+      .replace(/(^|\s)([A-Z_][A-Z0-9_]*=\S*)/g,'$1<span class="hl-e">$2</span>')
+      .replace(/(^|\s)(--?[a-zA-Z][\w-]*)/g,'$1<span class="hl-f">$2</span>')
+      .replace(/^(\s*)(mtplx|mlx-dspark|mlx-serve|curl|brew|uv|pip|python3?)(?=\s|$)/,'$1<span class="hl-k">$2</span>');
+    return out+(com?'<span class="hl-c">'+esc(com)+'</span>':'');
+  }).join('\n');
+});
+</script>
+</body>
+</html>
