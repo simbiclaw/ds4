@@ -239,10 +239,6 @@ summary{cursor:pointer;font-family:var(--cond);font-weight:600;color:#fff}
 <tr><td><strong>mlx-dspark</strong></td><td><code>--max-batch N</code>, hybrids in baseline mode</td><td>DSpark, DFlash, DFlash 2, n-gram lookup</td><td><strong>No</strong>: batched speculation is dense-only <span class="tag t-src">Sourced</span></td><td>Best-documented single-stream numbers; per-machine calibration</td></tr>
 <tr><td>vllm-metal 0.28/0.29</td><td>Continuous, paged, packed prefill</td><td>Batched MTP on Metal: Gemma 4 only</td><td>No</td><td>Lowest TTFT under agent load in its own SiliconBench runs; hybrid prefix cache experimental and not combinable with speculation</td></tr>
 <tr><td>vllm-mlx</td><td>Continuous</td><td>MTP</td><td>No on the multimodal path (MTP only when batch is 1 and greedy)</td><td>Text-only path untested here</td></tr>
-<tr><td>Splash</td><td>Refuses to install or start</td><td>macOS below 26.4, or pre-M3 chip</td><td>Upgrade macOS; the M2 Ultra host cannot run it</td></tr>
-<tr><td>Splash</td><td>Model refused</td><td>Plain MLX or Transformers checkpoint</td><td>Splash packages only</td></tr>
-<tr><td>Splash</td><td>Port in use at startup</td><td>Default 8000 shared with MTPLX</td><td>Move one server's port</td></tr>
-<tr><td>Splash</td><td>Fewer concurrent requests fit than expected</td><td>Startup memory budget shrunk by co-resident backends</td><td>Set <code>--max-memory</code>; bench alone first</td></tr>
 <tr><td>mlx-vlm</td><td>—</td><td>MTP drafter</td><td>—</td><td><span class="tag t-bad">Known bug</span> 0.6.2: MTP drafter crashes on the 35B-A3B (#1317). Use for vision without <code>--draft-model</code></td></tr>
 </tbody></table></div>
 <div class="note"><p><strong>Why the combination is worth less than it sounds.</strong> Batching and speculation both fill idle compute. vllm-metal measured batched MTP on Gemma 4 E4B at +20% output tok/s at concurrency 1 and +0% at 8. mlx-dspark measured batched speculation at 0.97× of batched baseline at B=4 on a dense 4B. The mlx-serve, MTPLX and Splash numbers show real gains, so measure rather than assume (WP5).</p></div>
@@ -568,6 +564,10 @@ splash serve --model incoai/Qwen3.6-35B-A3B-Splash --port 8021    # port flag un
 <tr><td>mlx-serve</td><td>No speedup</td><td>Checkpoint has no MTP sidecar</td><td>Use an MTP-bearing pack</td></tr>
 <tr><td>mlx-serve</td><td>Every request fails at first draft</td><td>DFlash2 drafter path (#454)</td><td>Do not load a drafter</td></tr>
 <tr><td>mlx-serve</td><td>Reachable from the LAN</td><td>Default host <code>0.0.0.0</code></td><td><code>--host 127.0.0.1</code></td></tr>
+<tr><td>Splash</td><td>Refuses to install or start</td><td>macOS below 26.4, or pre-M3 chip</td><td>Upgrade macOS; the M2 Ultra host cannot run it</td></tr>
+<tr><td>Splash</td><td>Model refused</td><td>Plain MLX or Transformers checkpoint</td><td>Splash packages only</td></tr>
+<tr><td>Splash</td><td>Port in use at startup</td><td>Default 8000 shared with MTPLX</td><td>Move one server's port</td></tr>
+<tr><td>Splash</td><td>Fewer concurrent requests fit than expected</td><td>Startup memory budget shrunk by co-resident backends</td><td>Set <code>--max-memory</code>; bench alone first</td></tr>
 <tr><td>mlx-vlm</td><td>Crash on first generation with MTP drafter</td><td>#1317 on 35B-A3B MoE (0.6.2)</td><td>Serve vision without <code>--draft-model</code></td></tr>
 <tr><td>Any</td><td>Speeds drift between runs</td><td>Co-resident models, thermals</td><td>Rule 2 bench hygiene</td></tr>
 <tr><td>Any</td><td>OOM or swap when co-hosting</td><td>Weights + KV over the GPU memory cap</td><td>Budget per section 3; split hosts</td></tr>
