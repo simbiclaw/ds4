@@ -1,1 +1,0 @@
-Explain how to check whether two fractions are equal without converting them to decimal approximations.

@@ -1,1 +1,0 @@
-Spiega come verificare che una copia di sicurezza sia davvero ripristinabile.

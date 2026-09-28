@@ -1,1 +1,0 @@
-Spiega perche un programma non deve ignorare il valore restituito da una scrittura su file.

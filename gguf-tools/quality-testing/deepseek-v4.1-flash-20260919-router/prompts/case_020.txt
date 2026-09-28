@@ -1,1 +1,0 @@
-Write a C function that copies a string into a fixed buffer and reports truncation explicitly.

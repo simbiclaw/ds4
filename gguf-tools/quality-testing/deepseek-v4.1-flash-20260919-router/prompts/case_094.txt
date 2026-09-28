@@ -1,1 +1,0 @@
-Explain why a sum computed in parallel may differ slightly from the same sum computed sequentially.

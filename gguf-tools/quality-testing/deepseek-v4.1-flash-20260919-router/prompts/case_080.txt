@@ -1,1 +1,0 @@
-Explain why a test that only checks the first output token cannot validate a complete text-generation implementation.

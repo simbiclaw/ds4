@@ -1,6 +1,0 @@
-# TOCTOU: The Check-Then-Open Race
-
-The problem you're describing is a classic **Time-of-Check to Time-of-Use (TOCTOU)** vulnerability. It arises whenever a program does:
-
-```c
-if (access("/path/to/file", W_OK) == 0) {

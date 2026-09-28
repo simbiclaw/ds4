@@ -1,1 +1,0 @@
-Explain how to distinguish a performance regression from a measurement taken under thermal throttling.

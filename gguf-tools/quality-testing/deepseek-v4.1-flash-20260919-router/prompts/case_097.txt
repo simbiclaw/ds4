@@ -1,1 +1,0 @@
-Explain why a successful checksum does not authenticate the sender of a file.

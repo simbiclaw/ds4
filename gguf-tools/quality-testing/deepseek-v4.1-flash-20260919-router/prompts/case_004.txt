@@ -1,1 +1,0 @@
-Write a SQL query returning customers who have no orders, using tables customers(id) and orders(customer_id).

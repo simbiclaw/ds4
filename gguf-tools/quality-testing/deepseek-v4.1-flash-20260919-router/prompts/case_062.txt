@@ -1,1 +1,0 @@
-Explain why a map's scale matters when estimating the distance between two towns.

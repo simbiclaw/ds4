@@ -1,1 +1,0 @@
-Explain how an HTTP client distinguishes a response with Content-Length from one terminated by connection close.

@@ -1,1 +1,0 @@
-Scrivi una breve funzione Python che verifica se due parole sono anagrammi ignorando spazi e maiuscole.
